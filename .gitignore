@@ -1,0 +1,29 @@
+# Entorno y cachés
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
+
+# Secretos
+.env
+.env.*
+!.env.example
+
+# Privacidad: nada de datos personales ni bases generadas
+datos/local/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Documentos descargados: se versiona el script, no los PDF
+datos/publico/
+
+# Power BI y exportaciones: ignorados por defecto, con excepciones acotadas
+*.pbix
+*.csv
+!powerbi/*.pbix
+!powerbi/ejemplo/*.csv
