@@ -1,0 +1,66 @@
+# DATOS FICTICIOS. No es la malla de ninguna carrera de la USFQ.
+# Los códigos empiezan con "EJ" para que no se confundan con cursos reales.
+# Sirve para los tests y para que el repo público funcione sin datos privados.
+carrera: EJEMPLO
+
+cursos:
+  - {codigo: EJM1001, nombre: Cálculo de ejemplo I, creditos: 4, area: matematicas, semestre: 1}
+  - {codigo: EJC1001, nombre: Programación de ejemplo I, creditos: 3, area: computacion, semestre: 1}
+  - {codigo: EJG1001, nombre: Escritura de ejemplo, creditos: 3, area: general, semestre: 1}
+
+  - {codigo: EJM1002, nombre: Cálculo de ejemplo II, creditos: 4, area: matematicas, semestre: 2, pre: [EJM1001]}
+  - {codigo: EJC1002, nombre: Programación de ejemplo II, creditos: 3, area: computacion, semestre: 2, pre: [EJC1001]}
+  - {codigo: EJC1003, nombre: Laboratorio de Programación II, creditos: 1, area: computacion, semestre: 2, co: [EJC1002]}
+
+  - {codigo: EJC2001, nombre: Estructuras de datos de ejemplo, creditos: 3, area: computacion, semestre: 3, pre: [EJC1002]}
+  - {codigo: EJM2001, nombre: Matemática discreta de ejemplo, creditos: 3, area: matematicas, semestre: 3, pre: [EJM1001]}
+
+  - {codigo: EJC2002, nombre: Algoritmos de ejemplo, creditos: 3, area: computacion, semestre: 4, pre: [EJC2001, EJM2001]}
+  - {codigo: EJC2003, nombre: Bases de datos de ejemplo, creditos: 3, area: computacion, semestre: 4, pre: [EJC2001]}
+
+  - {codigo: EJC3001, nombre: Aprendizaje automático de ejemplo, creditos: 3, area: datos, semestre: 5, tipo: electiva, pre: [EJC2002, EJM1002]}
+  - {codigo: EJC3002, nombre: Ingeniería de datos de ejemplo, creditos: 3, area: datos, semestre: 5, tipo: electiva, pre: [EJC2003]}
+
+  - {codigo: EJC4001, nombre: Proyecto integrador de ejemplo, creditos: 3, area: computacion, semestre: 6, pre: [EJC2002, EJC2003]}
+
+cupos:
+  - {id: EJOPT1, nombre: Optativa de ejemplo, creditos: 3, area: datos, semestre: 6}
+
+secciones:
+  - curso: EJM1002
+    nrc: "1001"
+    periodo: "209910"
+    horario:
+      - {dia: LU, inicio: "08:30", fin: "09:50"}
+      - {dia: MI, inicio: "08:30", fin: "09:50"}
+  - curso: EJM1002
+    nrc: "1002"
+    periodo: "209910"
+    horario:
+      - {dia: MA, inicio: "10:00", fin: "11:20"}
+      - {dia: VI, inicio: "10:00", fin: "11:20"}
+  - curso: EJM2001
+    nrc: "1003"
+    periodo: "209910"
+    horario:
+      # Choca con la sección 1001 de EJM1002 los lunes.
+      - {dia: LU, inicio: "09:00", fin: "10:20"}
+      - {dia: JU, inicio: "09:00", fin: "10:20"}
+  - curso: EJM2001
+    nrc: "1004"
+    periodo: "209910"
+    horario:
+      - {dia: MA, inicio: "14:30", fin: "15:50"}
+      - {dia: JU, inicio: "14:30", fin: "15:50"}
+  - curso: EJC2002
+    nrc: "1005"
+    periodo: "209910"
+    horario:
+      - {dia: LU, inicio: "11:30", fin: "12:50"}
+      - {dia: MI, inicio: "11:30", fin: "12:50"}
+  - curso: EJC2003
+    nrc: "1006"
+    periodo: "209910"
+    horario:
+      - {dia: MA, inicio: "08:30", fin: "09:50"}
+      - {dia: JU, inicio: "08:30", fin: "09:50"}

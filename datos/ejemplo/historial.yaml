@@ -1,0 +1,10 @@
+# HISTORIAL FICTICIO para tests y demos. El historial real va en
+# datos/local/historial.yaml, que git ignora.
+historial:
+  - {curso: EJM1001, periodo: "209810", estado: aprobado}
+  - {curso: EJC1001, periodo: "209810", estado: aprobado}
+  - {curso: EJG1001, periodo: "209810", estado: aprobado}
+  - {curso: EJM1002, periodo: "209820", estado: reprobado}
+  - {curso: EJC1002, periodo: "209820", estado: aprobado}
+  - {curso: EJC1003, periodo: "209820", estado: aprobado}
+  - {curso: EJC2001, periodo: "209910", estado: cursando}

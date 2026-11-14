@@ -1,0 +1,206 @@
+# Preguntas de evaluación del RAG: 30 con respuesta en los documentos y 10 sin ella.
+#
+# `conjunto`: dev (30: 20 con respuesta y las 10 sin ella) se usa para ajustar; test (10 con
+# respuesta: una de cada tres del manual y del calendario) solo para la medición final.
+#
+# BORRADOR redactado por el agente el 11-nov-2026, pendiente de revisión de Demian.
+# `evidencia` es un pasaje literal y corto del documento; la corrida de recuperación
+# comprueba que exista en algún fragmento y marca la pregunta como inválida si no.
+# Las preguntas "sin respuesta" se eligieron por no estar en los documentos
+# cargados, pero eso no se ha comprobado leyendo el manual completo.
+
+# ---------------------------------------------------------------- Manual del estudiante
+- id: man-01
+  conjunto: dev
+  pregunta: ¿Quién puede autorizar el sobrepaso de un prerrequisito?
+  tiene_respuesta: true
+  evidencia: Solo el decano o coordinador correspondiente pueden autorizarlo
+- id: man-02
+  conjunto: dev
+  pregunta: ¿Qué representa un crédito en la USFQ?
+  tiene_respuesta: true
+  evidencia: Un crédito representa una hora de contacto con el profesor
+- id: man-03
+  conjunto: test
+  pregunta: ¿Cuál es el promedio acumulado mínimo que exige la universidad?
+  tiene_respuesta: true
+  evidencia: promedio acumulado GPA de al menos 2,00/4,00
+- id: man-04
+  conjunto: dev
+  pregunta: ¿Qué pasa si mi promedio acumulado es igual o menor a 1,00?
+  tiene_respuesta: true
+  evidencia: el estudiante será separado de la institución
+- id: man-05
+  conjunto: dev
+  pregunta: ¿Cuántas matrículas se admiten en una misma materia?
+  tiene_respuesta: true
+  evidencia: No se admiten más de tres matrículas en una misma materia
+- id: man-06
+  conjunto: test
+  pregunta: ¿A quién le pido autorización para una tercera matrícula?
+  tiene_respuesta: true
+  evidencia: debe solicitar la autorización al Decano de Grado y Asuntos Académicos
+- id: man-07
+  conjunto: dev
+  pregunta: ¿Cuántas veces puedo retirarme de la misma materia?
+  tiene_respuesta: true
+  evidencia: Solo es posible retirarse hasta por dos ocasiones de una misma materia
+- id: man-08
+  conjunto: dev
+  pregunta: ¿Alguna autoridad puede autorizarme más créditos que la carga máxima?
+  tiene_respuesta: true
+  evidencia: Ninguna autoridad podrá autorizar un mayor número de créditos
+- id: man-09
+  conjunto: test
+  pregunta: ¿Quién define las políticas de ausencias y puntualidad de un curso?
+  tiene_respuesta: true
+  evidencia: Cada profesor establece en su syllabus las políticas referentes a ausencias
+- id: man-10
+  conjunto: dev
+  pregunta: ¿Qué hago si un curso no tiene syllabus?
+  tiene_respuesta: true
+  evidencia: El estudiante debe reportar en su decanato si algún curso no tiene syllabus
+- id: man-11
+  conjunto: dev
+  pregunta: ¿Qué promedio semestral necesito para la Lista de Honor del Canciller?
+  tiene_respuesta: true
+  evidencia: promedio semestral mayor o igual a 3,70/4,00
+- id: man-12
+  conjunto: test
+  pregunta: ¿Con qué nota mínima se aprueban los cursos de especialización?
+  tiene_respuesta: true
+  evidencia: Los cursos de especialización se aprueban con una nota mínima de
+- id: man-13
+  conjunto: dev
+  pregunta: ¿Cuántos créditos tiene una subespecialización o minor?
+  tiene_respuesta: true
+  evidencia: una subespecialización que se compone de 15 a 18 créditos
+- id: man-14
+  conjunto: dev
+  pregunta: ¿Cómo retiro una materia cuando ya pasó el plazo para salirme o cambiarme?
+  tiene_respuesta: true
+  evidencia: el retiro de un curso o varios respetando la carga mínima
+- id: man-15
+  conjunto: test
+  pregunta: ¿A dónde acudo si no logro resolver una controversia con un profesor?
+  tiene_respuesta: true
+  evidencia: De no encontrar solución se debe acudir a la Oficina del Ombudsman
+- id: man-16
+  conjunto: dev
+  pregunta: ¿Se pueden eliminar del kárdex las materias reprobadas?
+  tiene_respuesta: true
+  evidencia: No es posible eliminar materias de un kárdex académico aprobadas o reprobadas
+
+# ---------------------------------------------------------------- Calendarios 2026-2027
+- id: cal-01
+  conjunto: dev
+  pregunta: ¿Cuándo se publica la oferta de cursos del segundo semestre 2026-2027?
+  tiene_respuesta: true
+  evidencia: Publicación de la oferta de cursos del Segundo Semestre 2026-2027 lunes, 9 de noviembre de 2026
+- id: cal-02
+  conjunto: test
+  pregunta: ¿Desde cuándo se paga la matrícula ordinaria del segundo semestre 2026-2027?
+  tiene_respuesta: true
+  evidencia: Pago de matrícula ordinaria y aranceles miércoles, 4 de noviembre de 2026
+- id: cal-03
+  conjunto: dev
+  pregunta: ¿Qué día empieza y qué día termina el segundo semestre 2026-2027?
+  tiene_respuesta: true
+  evidencia: Segundo Semestre 2026-2027 lunes, 11 de enero de 2027 viernes, 14 de mayo de 2027
+- id: cal-04
+  conjunto: dev
+  pregunta: ¿Cuál es el periodo ordinario de registro de materias del segundo semestre 2026-2027?
+  tiene_respuesta: true
+  evidencia: Segundo Semestre 2026-2027 lunes, 23 de noviembre de 2026 lunes, 7 de diciembre de 2026
+- id: cal-05
+  conjunto: test
+  pregunta: ¿Hasta cuándo puedo solicitar tercera matrícula para el segundo semestre 2026-2027?
+  tiene_respuesta: true
+  evidencia: Último día para solicitar registro en tercera matrícula martes, 12 de enero de 2027
+- id: cal-06
+  conjunto: dev
+  pregunta: ¿En qué fechas puedo retirar materias por Banner en el segundo semestre 2026-2027?
+  tiene_respuesta: true
+  evidencia: Segundo Semestre 2026-2027 miércoles, 20 de enero de 2027 jueves, 15 de abril de 2027
+- id: cal-07
+  conjunto: dev
+  pregunta: ¿Cuándo son los exámenes finales del segundo semestre 2026-2027?
+  tiene_respuesta: true
+  evidencia: Segundo Semestre 2026-2027 viernes, 7 de mayo de 2027 viernes, 14 de mayo de 2027
+- id: cal-08
+  conjunto: test
+  pregunta: ¿Qué días es el feriado de Carnaval de 2027?
+  tiene_respuesta: true
+  evidencia: Feriado Carnaval sábado, 6 de febrero de 2027 martes, 9 de febrero de 2027
+- id: cal-09
+  conjunto: dev
+  pregunta: ¿Cuándo es el receso académico de medio semestre en 2027?
+  tiene_respuesta: true
+  evidencia: Receso académico de medio semestre lunes, 8 de marzo de 2027 domingo, 14 de marzo de 2027
+- id: cal-10
+  conjunto: dev
+  pregunta: ¿Cuál es el último día para solicitar cambio de carrera para el segundo semestre 2026-2027?
+  tiene_respuesta: true
+  evidencia: Último día para solicitar cambio de carrera para Segundo Semestre 2026-2027 domingo, 1 de noviembre de 2026
+- id: cal-11
+  conjunto: test
+  pregunta: ¿Cuándo empieza y cuándo termina el verano 2026-2027?
+  tiene_respuesta: true
+  evidencia: Verano 2026-2027 martes, 25 de mayo de 2027 miércoles, 21 de julio de 2027
+- id: cal-12
+  conjunto: dev
+  pregunta: ¿Cuándo se publica la oferta de cursos del verano 2026-2027?
+  tiene_respuesta: true
+  evidencia: Publicación de la oferta de cursos del Verano 2026-2027 jueves, 15 de abril de 2027
+- id: cal-13
+  conjunto: dev
+  pregunta: ¿Cuál es el periodo ordinario de registro de materias del verano 2026-2027?
+  tiene_respuesta: true
+  evidencia: Verano 2026-2027 jueves, 29 de abril de 2027 viernes, 7 de mayo de 2027
+- id: cal-14
+  conjunto: test
+  pregunta: ¿Qué día empezó y qué día termina el primer semestre 2026-2027?
+  tiene_respuesta: true
+  evidencia: Primer Semestre 2026-2027 lunes, 17 de agosto de 2026 viernes, 18 de diciembre de 2026
+
+# ---------------------------------------------------------------- Sin respuesta en los documentos
+- id: sin-01
+  conjunto: dev
+  pregunta: ¿Cuánto cuesta cada crédito de Ingeniería en Ciencias de la Computación en 2026?
+  tiene_respuesta: false
+- id: sin-02
+  conjunto: dev
+  pregunta: ¿Qué profesor dicta Estructuras de Datos el próximo semestre?
+  tiene_respuesta: false
+- id: sin-03
+  conjunto: dev
+  pregunta: ¿En qué aula es la clase de Cálculo Vectorial?
+  tiene_respuesta: false
+- id: sin-04
+  conjunto: dev
+  pregunta: ¿Cuál es el prerrequisito de CMP 4005 Redes?
+  tiene_respuesta: false
+- id: sin-05
+  conjunto: dev
+  pregunta: ¿Cuándo es el registro de materias del primer semestre 2027-2028?
+  tiene_respuesta: false
+- id: sin-06
+  conjunto: dev
+  pregunta: ¿Cuánto cuesta el parqueadero mensual para estudiantes?
+  tiene_respuesta: false
+- id: sin-07
+  conjunto: dev
+  pregunta: ¿Qué nota saqué en Cálculo Integral?
+  tiene_respuesta: false
+- id: sin-08
+  conjunto: dev
+  pregunta: ¿Cuál es la contraseña del wifi del campus?
+  tiene_respuesta: false
+- id: sin-09
+  conjunto: dev
+  pregunta: ¿Qué universidad es mejor, la USFQ o la PUCE?
+  tiene_respuesta: false
+- id: sin-10
+  conjunto: dev
+  pregunta: ¿Cuántos estudiantes se graduaron de Ciencias de la Computación en 2025?
+  tiene_respuesta: false

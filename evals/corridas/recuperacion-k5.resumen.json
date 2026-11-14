@@ -1,0 +1,13 @@
+{
+  "preguntas": 30,
+  "invalidas": [],
+  "k": 5,
+  "en_top_k": 28,
+  "en_top_1": 23,
+  "recall_top_k": 0.933,
+  "mrr": 0.842,
+  "falladas": [
+    "cal-11",
+    "cal-14"
+  ]
+}

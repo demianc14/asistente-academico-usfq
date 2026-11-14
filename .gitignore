@@ -27,3 +27,5 @@ datos/publico/
 *.csv
 !powerbi/*.pbix
 !powerbi/ejemplo/*.csv
+# Prerrequisitos de la malla: datos públicos, verificados a mano por Demian
+!datos/malla_prerrequisitos.csv
