@@ -1,0 +1,582 @@
+# Escenarios de evaluación del agente planificador (Fase 3). Datos de ejemplo (códigos EJ…).
+#
+# CONGELADOS el 14-nov-2026. Los redactó el agente; Demian revisó la tabla de los 15 primeros
+# y pidió ag-16 y ag-17. Los resultados esperados se dedujeron a mano de
+# `datos/ejemplo/malla.yaml`, sin ejecutar el bucle: hasta este commit ningún test cargó el
+# archivo y no se corrió ni una vez. Cualquier cambio posterior va en un commit aparte y se
+# anota en `docs/evaluacion.md`.
+#
+# V2, CONGELADA el 15-nov-2026 tras la revisión adversarial (F-01 a F-08). Cambios: toda
+# solicitud trae `periodo` (lo llena la interfaz, como `creditos_max`); ag-06 y ag-11 traen
+# `cursos_pedidos`; ag-10 intenta colar también `aprobados` que harían pasar el plan; ag-16
+# pasa a ser "falta el periodo", que pregunta el código sin llamar al LLM. Igual que la v1, lo
+# esperado se dedujo a mano y este archivo se confirmó antes de ejecutar el bucle sobre él.
+#
+# Cada escenario trae el guion que seguirá el cliente falso (una respuesta por llamada: una
+# acción, o un texto suelto cuando se quiere una salida que no es JSON) y lo que debe salir. Con guion, estas cifras miden el bucle y el guion, no a Gemini.
+#
+# `esperado`:
+#   estado              plan | pregunta | abstencion
+#   pregunta / motivo   valor del catálogo, según el estado
+#   vueltas             correcciones usadas (propuestas hechas menos una)
+#   llamadas            llamadas al LLM; si el guion trae más respuestas, las de sobra no se piden
+#   horario_verificado  solo con estado plan
+#   plan                solo con estado plan: periodo → cursos, "CÓDIGO/NRC" o "CÓDIGO" sin NRC
+#   pasos               qué debe hacer el código en cada llamada: el nombre de la herramienta
+#                       ("verificar_plan" para una propuesta) o pregunta / abstencion /
+#                       salida_invalida
+#   inventados          códigos inexistentes que el código debe atrapar, únicos por escenario
+#   intentos_inventados cuántas veces los atrapó (el mismo código puede intentarse varias veces)
+#   preferencias_no_verificadas   solo con estado plan: las de la solicitud, que el plan
+#                       visible lista como no verificadas. Cumplirlas o no no cuenta como acierto.
+#   pedidos_fuera       solo con estado plan: código de `cursos_pedidos` que no entró → tipos
+#                       de motivo (sin repetir, en orden) que da `verificar_plan` al añadirlo
+#                       al plan mostrado; ["no_propuesto"] si habría cabido.
+
+# ---------------------------------------------------------------- válido a la primera
+- id: ag-01
+  categoria: valido_a_la_primera
+  descripcion: Consulta habilitados y horarios, y propone dos cursos con secciones que no chocan.
+  solicitud:
+    texto: Quiero un plan para 209910 con las materias de matemáticas que ya puedo tomar.
+    periodo: "209910"
+    creditos_max: 18
+    aprobados: &aprobados [EJM1001, EJC1001, EJG1001, EJC1002, EJC1003]
+    preferencias: [materias de matemáticas]
+  guion:
+    - {accion: herramienta, nombre: cursos_habilitados, argumentos: {aprobados: *aprobados}}
+    - {accion: herramienta, nombre: horarios, argumentos: {curso: EJM1002, periodo: "209910"}}
+    - {accion: herramienta, nombre: horarios, argumentos: {curso: EJM2001, periodo: "209910"}}
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM1002, nrc: "1002"}, {codigo: EJM2001, nrc: "1004"}]
+  esperado:
+    estado: plan
+    vueltas: 0
+    llamadas: 4
+    horario_verificado: true
+    plan: {"209910": [EJM1002/1002, EJM2001/1004]}
+    preferencias_no_verificadas: [materias de matemáticas]
+    pasos: [cursos_habilitados, horarios, horarios, verificar_plan]
+    inventados: []
+    intentos_inventados: 0
+
+- id: ag-02
+  categoria: valido_a_la_primera
+  descripcion: >-
+    Propone directo, sin consultar. Lo que se mide es que el plan pase y que "sin clases los
+    viernes" salga como preferencia no verificada. Que las secciones elegidas no tengan clase
+    el viernes es cosa del guion y no cuenta como acierto.
+  solicitud:
+    texto: Cálculo II y Matemática discreta en 209910, sin clases los viernes.
+    periodo: "209910"
+    creditos_max: 18
+    aprobados: *aprobados
+    preferencias: [sin clases los viernes]
+  guion:
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM1002, nrc: "1001"}, {codigo: EJM2001, nrc: "1004"}]
+  esperado:
+    estado: plan
+    vueltas: 0
+    llamadas: 1
+    horario_verificado: true
+    plan: {"209910": [EJM1002/1001, EJM2001/1004]}
+    preferencias_no_verificadas: [sin clases los viernes]
+    pasos: [verificar_plan]
+    inventados: []
+    intentos_inventados: 0
+
+# ---------------------------------------------------------------- plan sin NRC
+- id: ag-03
+  categoria: plan_sin_nrc
+  descripcion: >-
+    EJC2001 no tiene secciones cargadas en 209910, así que va sin NRC. El plan es válido y
+    se muestra con "horario sin verificar".
+  solicitud:
+    texto: Estructuras de datos y Matemática discreta en 209910.
+    periodo: "209910"
+    creditos_max: 18
+    aprobados: *aprobados
+  guion:
+    - {accion: herramienta, nombre: horarios, argumentos: {curso: EJC2001, periodo: "209910"}}
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJC2001}, {codigo: EJM2001, nrc: "1004"}]
+  esperado:
+    estado: plan
+    vueltas: 0
+    llamadas: 2
+    horario_verificado: false
+    plan: {"209910": [EJC2001, EJM2001/1004]}
+    pasos: [horarios, verificar_plan]
+    inventados: []
+    intentos_inventados: 0
+
+# ---------------------------------------------------------------- válido tras una corrección
+- id: ag-04
+  categoria: una_correccion
+  descripcion: La primera propuesta choca los lunes (NRC 1001 y 1003); la segunda cambia de sección.
+  solicitud:
+    texto: Cálculo II y Matemática discreta en 209910, lo más temprano posible.
+    periodo: "209910"
+    creditos_max: 18
+    aprobados: *aprobados
+    preferencias: [lo más temprano posible]
+  guion:
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM1002, nrc: "1001"}, {codigo: EJM2001, nrc: "1003"}]
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM1002, nrc: "1001"}, {codigo: EJM2001, nrc: "1004"}]
+  esperado:
+    estado: plan
+    vueltas: 1
+    llamadas: 2
+    horario_verificado: true
+    plan: {"209910": [EJM1002/1001, EJM2001/1004]}
+    preferencias_no_verificadas: [lo más temprano posible]
+    pasos: [verificar_plan, verificar_plan]
+    inventados: []
+    intentos_inventados: 0
+
+- id: ag-05
+  categoria: una_correccion
+  descripcion: Con tope de 6 créditos, la primera propuesta suma 7; la segunda quita un curso.
+  solicitud:
+    texto: Este semestre trabajo; hasta 6 créditos en 209910.
+    periodo: "209910"
+    creditos_max: 6
+    aprobados: *aprobados
+  guion:
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM1002, nrc: "1002"}, {codigo: EJM2001, nrc: "1004"}]
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM1002, nrc: "1002"}]
+  esperado:
+    estado: plan
+    vueltas: 1
+    llamadas: 2
+    horario_verificado: true
+    plan: {"209910": [EJM1002/1002]}
+    pasos: [verificar_plan, verificar_plan]
+    inventados: []
+    intentos_inventados: 0
+
+- id: ag-06
+  categoria: una_correccion
+  descripcion: >-
+    Propone Algoritmos sin tener sus prerrequisitos; tras el rechazo consulta la cadena y
+    propone uno de los prerrequisitos. El plan visible dice que el curso pedido (EJC2002) no
+    entró y por qué: le faltan EJC2001 y EJM2001 aprobados.
+  solicitud:
+    texto: Quiero tomar Algoritmos en 209910.
+    periodo: "209910"
+    creditos_max: 18
+    aprobados: *aprobados
+    cursos_pedidos: [EJC2002]
+  guion:
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJC2002, nrc: "1005"}]
+    - {accion: herramienta, nombre: prerrequisitos, argumentos: {curso: EJC2002}}
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM2001, nrc: "1004"}]
+  esperado:
+    estado: plan
+    vueltas: 1
+    llamadas: 3
+    horario_verificado: true
+    plan: {"209910": [EJM2001/1004]}
+    pedidos_fuera: {EJC2002: [prerrequisito_faltante]}
+    pasos: [verificar_plan, prerrequisitos, verificar_plan]
+    inventados: []
+    intentos_inventados: 0
+
+# ---------------------------------------------------------------- válido tras dos correcciones
+- id: ag-07
+  categoria: dos_correcciones
+  descripcion: >-
+    Tope de 7 créditos. Primero choca; al arreglar el choque añade un curso y pasa a 10
+    créditos; a la tercera queda en 7 sin choque.
+  solicitud:
+    texto: Hasta 7 créditos en 209910.
+    periodo: "209910"
+    creditos_max: 7
+    aprobados: *aprobados
+  guion:
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM1002, nrc: "1001"}, {codigo: EJM2001, nrc: "1003"}]
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos:
+              - {codigo: EJM1002, nrc: "1001"}
+              - {codigo: EJM2001, nrc: "1004"}
+              - {codigo: EJC2001}
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM1002, nrc: "1001"}, {codigo: EJM2001, nrc: "1004"}]
+  esperado:
+    estado: plan
+    vueltas: 2
+    llamadas: 3
+    horario_verificado: true
+    plan: {"209910": [EJM1002/1001, EJM2001/1004]}
+    pasos: [verificar_plan, verificar_plan, verificar_plan]
+    inventados: []
+    intentos_inventados: 0
+
+- id: ag-08
+  categoria: dos_correcciones
+  descripcion: >-
+    Primero incluye un curso ya aprobado; después un NRC que no existe; a la tercera, la
+    sección correcta.
+  solicitud:
+    texto: Cálculo II en 209910.
+    periodo: "209910"
+    creditos_max: 18
+    aprobados: *aprobados
+  guion:
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJC1002}, {codigo: EJM1002, nrc: "1002"}]
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM1002, nrc: "9999"}]
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM1002, nrc: "1002"}]
+  esperado:
+    estado: plan
+    vueltas: 2
+    llamadas: 3
+    horario_verificado: true
+    plan: {"209910": [EJM1002/1002]}
+    pasos: [verificar_plan, verificar_plan, verificar_plan]
+    inventados: []
+    intentos_inventados: 0
+
+# ---------------------------------------------------------------- no converge
+- id: ag-09
+  categoria: no_converge
+  descripcion: >-
+    Tres propuestas rechazadas (choque; prerrequisito y choque; el mismo choque). El guion
+    trae una cuarta propuesta válida que no debe pedirse. Se abstiene y no muestra plan.
+  solicitud:
+    texto: Dos materias en 209910, en la mañana.
+    periodo: "209910"
+    creditos_max: 18
+    aprobados: *aprobados
+    preferencias: [en la mañana]
+  guion:
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM1002, nrc: "1001"}, {codigo: EJM2001, nrc: "1003"}]
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM2001, nrc: "1003"}, {codigo: EJC2003, nrc: "1006"}]
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM1002, nrc: "1001"}, {codigo: EJM2001, nrc: "1003"}]
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM1002, nrc: "1002"}, {codigo: EJM2001, nrc: "1004"}]
+  esperado:
+    estado: abstencion
+    motivo: no_converge
+    vueltas: 2
+    llamadas: 3
+    pasos: [verificar_plan, verificar_plan, verificar_plan]
+    inventados: []
+    intentos_inventados: 0
+
+- id: ag-10
+  categoria: no_converge
+  descripcion: >-
+    Tope de 6 créditos. El guion trata de colar sus propios datos en el plan: primero
+    creditos_max 99 con 7 créditos; después aprobados de más (EJC2001 y EJM2001) que harían
+    pasar Algoritmos; al final las dos cosas por la herramienta verificar_plan. El código usa
+    siempre los de la solicitud: si alguno colara, el escenario terminaría con plan.
+  solicitud:
+    texto: Hasta 6 créditos en 209910.
+    periodo: "209910"
+    creditos_max: 6
+    aprobados: *aprobados
+  guion:
+    - accion: proponer
+      plan:
+        creditos_max: 99
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM1002, nrc: "1002"}, {codigo: EJM2001, nrc: "1004"}]
+    - accion: proponer
+      plan:
+        aprobados: [EJM1001, EJC1001, EJG1001, EJC1002, EJC1003, EJC2001, EJM2001]
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJC2002, nrc: "1005"}]
+    - accion: herramienta
+      nombre: verificar_plan
+      argumentos:
+        creditos_max: 99
+        aprobados: [EJM1001, EJC1001, EJG1001, EJC1002, EJC1003, EJC2001, EJM2001]
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM1002, nrc: "1002"}, {codigo: EJC2002, nrc: "1005"}]
+  esperado:
+    estado: abstencion
+    motivo: no_converge
+    vueltas: 2
+    llamadas: 3
+    pasos: [verificar_plan, verificar_plan, verificar_plan]
+    inventados: []
+    intentos_inventados: 0
+
+# ---------------------------------------------------------------- curso inventado
+- id: ag-11
+  categoria: curso_inventado
+  descripcion: >-
+    La primera propuesta trae un código que no existe (EJX9999); la segunda lo quita. El curso
+    pedido (EJM1002) entra; "algo de inteligencia artificial" no es un curso y sale como
+    preferencia no verificada.
+  solicitud:
+    texto: Cálculo II y algo de inteligencia artificial en 209910.
+    periodo: "209910"
+    creditos_max: 18
+    aprobados: *aprobados
+    cursos_pedidos: [EJM1002]
+    preferencias: [algo de inteligencia artificial]
+  guion:
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJX9999}, {codigo: EJM1002, nrc: "1002"}]
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM1002, nrc: "1002"}]
+  esperado:
+    estado: plan
+    vueltas: 1
+    llamadas: 2
+    horario_verificado: true
+    plan: {"209910": [EJM1002/1002]}
+    preferencias_no_verificadas: [algo de inteligencia artificial]
+    pasos: [verificar_plan, verificar_plan]
+    inventados: [EJX9999]
+    intentos_inventados: 1
+
+- id: ag-12
+  categoria: curso_inventado
+  descripcion: >-
+    Busca un curso que no está en la base, consulta dos veces un código inventado y, al no
+    encontrarlo, se abstiene en vez de proponerlo.
+  solicitud:
+    texto: Quiero tomar Inteligencia artificial en 209910.
+    periodo: "209910"
+    creditos_max: 18
+    aprobados: *aprobados
+  guion:
+    - {accion: herramienta, nombre: buscar_curso, argumentos: {texto: inteligencia artificial}}
+    - {accion: herramienta, nombre: prerrequisitos, argumentos: {curso: EJX9999}}
+    - {accion: herramienta, nombre: horarios, argumentos: {curso: EJX9999, periodo: "209910"}}
+    - {accion: abstenerse, motivo: sin_plan_posible}
+  esperado:
+    estado: abstencion
+    motivo: sin_plan_posible
+    vueltas: 0
+    llamadas: 4
+    pasos: [buscar_curso, prerrequisitos, horarios, abstencion]
+    inventados: [EJX9999]
+    intentos_inventados: 2
+
+# ---------------------------------------------------------------- código mal formado
+- id: ag-13
+  categoria: codigo_mal_formado
+  descripcion: >-
+    Un código mal formado en una consulta (no gasta vuelta) y otro en una propuesta (sí la
+    gasta). A la segunda propuesta, el código correcto.
+  solicitud:
+    texto: Cálculo 2 en 209910.
+    periodo: "209910"
+    creditos_max: 18
+    aprobados: *aprobados
+  guion:
+    - {accion: herramienta, nombre: prerrequisitos, argumentos: {curso: CALCULO2}}
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM102, nrc: "1002"}]
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM1002, nrc: "1002"}]
+  esperado:
+    estado: plan
+    vueltas: 1
+    llamadas: 3
+    horario_verificado: true
+    plan: {"209910": [EJM1002/1002]}
+    pasos: [prerrequisitos, verificar_plan, verificar_plan]
+    inventados: []
+    intentos_inventados: 0
+
+# ---------------------------------------------------------------- herramienta inexistente
+- id: ag-14
+  categoria: herramienta_inexistente
+  descripcion: >-
+    Llama una herramienta que no existe; recibe el error con las disponibles, usa una real
+    y propone.
+  solicitud:
+    texto: Cálculo II en 209910, en una sección que tenga cupo.
+    periodo: "209910"
+    creditos_max: 18
+    aprobados: *aprobados
+    preferencias: [una sección que tenga cupo]
+  guion:
+    - {accion: herramienta, nombre: consultar_cupos, argumentos: {curso: EJM1002}}
+    - {accion: herramienta, nombre: horarios, argumentos: {curso: EJM1002, periodo: "209910"}}
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM1002, nrc: "1002"}]
+  esperado:
+    estado: plan
+    vueltas: 0
+    llamadas: 3
+    horario_verificado: true
+    plan: {"209910": [EJM1002/1002]}
+    preferencias_no_verificadas: [una sección que tenga cupo]
+    pasos: [consultar_cupos, horarios, verificar_plan]
+    inventados: []
+    intentos_inventados: 0
+
+# ---------------------------------------------------------------- creditos_max ausente
+- id: ag-15
+  categoria: creditos_max_ausente
+  descripcion: >-
+    La solicitud no trae límite de créditos. El código pregunta sin llamar al LLM; la
+    propuesta del guion no debe pedirse.
+  solicitud:
+    texto: Ármame el semestre 209910.
+    periodo: "209910"
+    creditos_max: null
+    aprobados: *aprobados
+  guion:
+    - accion: proponer
+      plan:
+        creditos_max: 18
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM1002, nrc: "1002"}, {codigo: EJM2001, nrc: "1004"}]
+  esperado:
+    estado: pregunta
+    pregunta: falta_creditos_max
+    vueltas: 0
+    llamadas: 0
+    pasos: []
+    inventados: []
+    intentos_inventados: 0
+
+# ---------------------------------------------------------------- periodo ausente
+- id: ag-16
+  categoria: periodo_ausente
+  descripcion: >-
+    La solicitud no trae periodo. El código pregunta falta_periodo sin llamar al LLM; la
+    propuesta del guion no debe pedirse.
+  solicitud:
+    texto: Ármame el próximo semestre.
+    creditos_max: 18
+    aprobados: *aprobados
+  guion:
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM1002, nrc: "1002"}, {codigo: EJM2001, nrc: "1004"}]
+  esperado:
+    estado: pregunta
+    pregunta: falta_periodo
+    vueltas: 0
+    llamadas: 0
+    pasos: []
+    inventados: []
+    intentos_inventados: 0
+
+# ---------------------------------------------------------------- salidas ilegibles
+- id: ag-17
+  categoria: salida_invalida
+  descripcion: >-
+    Tres salidas seguidas que no son JSON. El agente se abstiene a la tercera, sin gastar las
+    10 llamadas; la propuesta válida que el guion trae después no debe pedirse.
+  solicitud:
+    texto: Cálculo II en 209910.
+    periodo: "209910"
+    creditos_max: 18
+    aprobados: *aprobados
+  guion:
+    - "Claro, con gusto te ayudo a armar tu semestre."
+    - "Te recomiendo tomar Cálculo II con el NRC 1002."
+    - "plan: EJM1002"
+    - accion: proponer
+      plan:
+        semestres:
+          - periodo: "209910"
+            cursos: [{codigo: EJM1002, nrc: "1002"}]
+  esperado:
+    estado: abstencion
+    motivo: salida_invalida
+    vueltas: 0
+    llamadas: 3
+    pasos: [salida_invalida, salida_invalida, salida_invalida]
+    inventados: []
+    intentos_inventados: 0

@@ -4,14 +4,19 @@ Proyecto de portafolio de Demian (Ingeniería en Ciencias de la Computación, US
 verificadas y planificador de semestre. La tesis es **el LLM propone, el código verifica**.
 
 **Estado, siguientes pasos y decisiones pendientes: `ROADMAP.md`.** Léelo antes de empezar y
-actualízalo al cerrar cada fase. De dónde sale cada documento: `docs/fuentes.md`.
+actualízalo al cerrar cada fase. De dónde sale cada documento: `docs/fuentes.md`. Decisiones de
+diseño con su fuente (formato del código de curso, reglas de `verificar_plan`): `docs/decisiones.md`.
 
-## Dónde estamos (12-nov-2026)
+## Dónde estamos (15-nov-2026)
 
-- Fases 0 y 1 hechas con datos de ejemplo; Fase 2 construida pero sin LLM real conectado.
-- Rama actual `fase-2-rag`. Todo son commits locales: no hay remoto ni PR.
-- Lo siguiente es conectar un proveedor detrás de `ClienteLLM` y correr la evaluación; espera que
-  Demian elija proveedor.
+- Fases 0 y 1 hechas con datos de ejemplo. Fase 2 construida con Gemini detrás de `ClienteLLM`,
+  pero sin cerrar: el humo sigue pendiente y no hay cifras con LLM.
+- Fase 3: hechas las herramientas deterministas y el agente (bucle de tool use), con datos de
+  ejemplo y un cliente de guion. Tras una revisión adversarial (8 fallos corregidos), 17
+  escenarios congelados v2 y su corrida `agente-guion-v2`. Ninguna llamada a Gemini desde el
+  agente.
+- `main` tiene las Fases 0 a 2 (squash local). Rama actual `fase-3-agente`, que sale de
+  `fase-3-herramientas`; ninguna de las dos está en `main`. No hay remoto.
 
 ## Principios no negociables
 
@@ -35,6 +40,7 @@ no se pueda comprobar. Por eso la malla real está sin prerrequisitos.
 .venv/bin/python scripts/descargar_fuentes.py        # PDF públicos → datos/publico/
 .venv/bin/python -m asistente.rag.ingesta            # PDF → fragmentos
 .venv/bin/python -m asistente.evaluacion.rag --solo-recuperacion
+.venv/bin/python -m asistente.evaluacion.agente      # 17 escenarios con guion; no pisa la corrida
 .venv/bin/ruff format . && .venv/bin/ruff check . && .venv/bin/mypy && .venv/bin/pytest
 ```
 
@@ -50,13 +56,15 @@ src/asistente/
   llm.py          protocolo ClienteLLM y cliente de guion para tests
   etl/            modelos Pydantic y carga fail-fast
   rag/            ingesta, búsqueda BM25, verificación de citas, orquestador
+  planificador/   herramientas deterministas (buscar_curso, verificar_plan...); sin LLM
+  agente/         bucle de tool use: el LLM propone, verificar_plan decide qué se muestra
   evaluacion/     corridas guardadas y reanudables
 sql/              schema.sql y vistas.sql
 datos/ejemplo/    datos ficticios (códigos EJ…), versionados
 datos/borrador/   malla real sin prerrequisitos; el ETL no la carga por defecto
 datos/publico/    PDF descargados (ignorado por git)
 datos/local/      historial real, syllabus y base (ignorado por git)
-evals/            preguntas.yaml y corridas/
+evals/            preguntas.yaml, escenarios_agente.yaml (congelado) y corridas/
 ```
 
 ## Reglas de trabajo
@@ -67,6 +75,9 @@ evals/            preguntas.yaml y corridas/
   cuenta activa de `gh` en esta máquina es la de trabajo: preguntar antes de cambiarla o de subir
   algo.
 - Toda cifra del README sale de una corrida guardada en `evals/corridas/`.
+- `evals/escenarios_agente.yaml` está congelado: un cambio va en commit aparte y se anota en
+  `docs/evaluacion.md`. Toda cifra medida con guion lleva la frase "mide el bucle y el guion, no a
+  Gemini".
 - Antes de una corrida con LLM, avisar cuántas llamadas hará (la cuota gratuita es chica).
 - Claves de API: van en `.env` y las pone Demian.
 - Nada de scraping del portal con credenciales. Un PDF público trae credenciales del portal: no se

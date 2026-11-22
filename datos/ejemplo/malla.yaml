@@ -64,3 +64,10 @@ secciones:
     horario:
       - {dia: MA, inicio: "08:30", fin: "09:50"}
       - {dia: JU, inicio: "08:30", fin: "09:50"}
+  - curso: EJC2003
+    nrc: "1007"
+    periodo: "209910"
+    horario:
+      # Termina a las 10:00, justo cuando empieza la sección 1002 de EJM1002 los martes: no chocan.
+      - {dia: MA, inicio: "08:30", fin: "10:00"}
+      - {dia: JU, inicio: "08:30", fin: "10:00"}

@@ -162,27 +162,44 @@ def _repetidos(valores: list[str]) -> list[str]:
     return sorted(v for v, n in Counter(valores).items() if n > 1)
 
 
-def _ciclo(aristas: dict[str, tuple[str, ...]]) -> list[str] | None:
-    """Devuelve un ciclo de prerrequisitos (A → B → ... → A) si existe."""
-    blanco, gris, negro = 0, 1, 2
-    color = dict.fromkeys(aristas, blanco)
-    for origen in aristas:
-        if color[origen] != blanco:
-            continue
-        camino = [origen]
-        pila = [iter(aristas[origen])]
-        color[origen] = gris
-        while pila:
-            siguiente = next(pila[-1], None)
-            if siguiente is None:
-                color[camino.pop()] = negro
-                pila.pop()
-            elif color.get(siguiente, negro) == gris:
-                return [*camino[camino.index(siguiente) :], siguiente]
-            elif color.get(siguiente, negro) == blanco:
-                color[siguiente] = gris
-                camino.append(siguiente)
-                pila.append(iter(aristas[siguiente]))
+def _ciclo(
+    pre: dict[str, tuple[str, ...]], co: dict[str, tuple[str, ...]]
+) -> tuple[list[str], bool] | None:
+    """Busca un ciclo de requisitos que pase por al menos una arista `pre`.
+
+    Un ciclo así no se puede cumplir: `pre` exige "estrictamente antes" y `co` "antes o a la
+    vez", de modo que alguna de sus aristas pediría que un curso vaya antes que sí mismo. Los
+    ciclos solo de `co` (correquisitos mutuos) sí se cumplen, tomando los cursos juntos.
+
+    Devuelve el ciclo (A → B → ... → A, donde cada curso requiere al siguiente) y si pasa
+    por algún correquisito.
+    """
+    for curso, requisitos in pre.items():
+        for requisito in requisitos:
+            if requisito == curso or requisito not in pre:
+                continue  # `validar` ya reporta estos dos casos por separado
+            # ¿Se vuelve de `requisito` a `curso` siguiendo requisitos de cualquier tipo?
+            previo: dict[str, tuple[str, bool]] = {}
+            cola = [requisito]
+            for actual in cola:
+                if actual == curso:
+                    break
+                for siguiente, es_co in [
+                    *((r, False) for r in pre.get(actual, ())),
+                    *((r, True) for r in co.get(actual, ())),
+                ]:
+                    if siguiente != requisito and siguiente not in previo and siguiente in pre:
+                        previo[siguiente] = (actual, es_co)
+                        cola.append(siguiente)
+            if curso not in previo:
+                continue
+            vuelta = [curso]
+            pasa_por_co = False
+            while vuelta[-1] != requisito:
+                anterior, es_co = previo[vuelta[-1]]
+                pasa_por_co = pasa_por_co or es_co
+                vuelta.append(anterior)
+            return [curso, *reversed(vuelta)], pasa_por_co
     return None
 
 
@@ -206,9 +223,14 @@ def validar(malla: ArchivoMalla, historial: ArchivoHistorial | None = None) -> l
         for requisito in _repetidos(requisitos):
             errores.append(f"{curso.codigo}: el requisito {requisito} está repetido")
 
-    ciclo = _ciclo({c.codigo: c.pre for c in malla.cursos})
+    ciclo = _ciclo({c.codigo: c.pre for c in malla.cursos}, {c.codigo: c.co for c in malla.cursos})
     if ciclo is not None:
-        errores.append("ciclo de prerrequisitos: " + " → ".join(ciclo))
+        camino, pasa_por_co = ciclo
+        errores.append(
+            "ciclo de prerrequisitos: "
+            + " → ".join(camino)
+            + (" (pasa por correquisitos)" if pasa_por_co else "")
+        )
 
     for seccion in malla.secciones:
         if seccion.curso not in codigos:

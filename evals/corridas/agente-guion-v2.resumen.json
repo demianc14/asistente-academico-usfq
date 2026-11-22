@@ -1,0 +1,33 @@
+{
+  "escenarios_sha256": "7617e99077dceac9b8524d891c3219b2e617ac067202c607202cc1b4864097cb",
+  "nota": "Mide el bucle y el guion, no a Gemini: el LLM es un cliente falso que sigue un guion.",
+  "llamadas_a_gemini": 0,
+  "escenarios": 17,
+  "cumplen_lo_esperado": 17,
+  "no_cumplen": {},
+  "terminan_con_plan_valido": 11,
+  "planes_mostrados": 11,
+  "planes_mostrados_que_no_pasan_la_reverificacion": 0,
+  "planes_con_horario_sin_verificar": 1,
+  "terminan_en_pregunta": {
+    "falta_creditos_max": 1,
+    "falta_periodo": 1
+  },
+  "terminan_en_abstencion": {
+    "no_converge": 2,
+    "sin_plan_posible": 1,
+    "salida_invalida": 1
+  },
+  "vueltas_de_los_que_terminan_con_plan": {
+    "0": 4,
+    "1": 5,
+    "2": 2
+  },
+  "pasos_con_la_herramienta_esperada": 41,
+  "pasos_esperados": 41,
+  "pasos_dados": 41,
+  "cursos_inventados_atrapados": 2,
+  "cursos_inventados_esperados": 2,
+  "intentos_con_curso_inventado": 3,
+  "llamadas_al_cliente_de_guion": 41
+}

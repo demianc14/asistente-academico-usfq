@@ -6,11 +6,12 @@ from typing import Any
 
 import pytest
 import yaml
+from pydantic import TypeAdapter, ValidationError
 
 from asistente.db import conectar, crear_esquema
 from asistente.etl import ErrorDeCarga, cargar, leer_historial, leer_malla
 from asistente.etl.__main__ import main
-from asistente.etl.modelos import ArchivoMalla
+from asistente.etl.modelos import ArchivoMalla, Codigo, Hora, Periodo, Texto
 
 
 def _malla(**cambios: Any) -> ArchivoMalla:
@@ -45,12 +46,12 @@ def test_carga_el_ejemplo_y_reporta(ejemplo: Path) -> None:
     assert (reporte.cursos, reporte.creditos) == (13, 39)
     assert (reporte.cupos, reporte.creditos_cupos) == (1, 3)
     assert (reporte.prerrequisitos, reporte.correquisitos) == (12, 1)
-    assert reporte.secciones == 6
+    assert reporte.secciones == 7
     assert reporte.registros_historial == 7
     assert len(reporte.cursos_sin_seccion) == 9
     assert reporte.avisos == ()
     assert _contar(con, "cursos") == 13
-    assert _contar(con, "horarios") == 12
+    assert _contar(con, "horarios") == 14
 
 
 def test_prerrequisito_inexistente_detiene_la_carga_sin_tocar_la_base(
@@ -207,3 +208,140 @@ def test_cli_carga_y_falla_con_codigo_1(
     mala.write_text("carrera: P\ncursos: []\n")
     assert main(["--malla", str(mala), "--db", str(db)]) == 1
     assert "La base no se modificó" in capsys.readouterr().err
+
+
+# ------------------------------------------------------------------ ciclos con correquisitos
+
+
+def _cursos_con_requisitos(*cursos: tuple[str, list[str], list[str]]) -> list[dict[str, Any]]:
+    return [
+        {"codigo": c, "nombre": c, "creditos": 3, "area": "x", "semestre": 1, "pre": pre, "co": co}
+        for c, pre, co in cursos
+    ]
+
+
+def test_rechaza_ciclo_mixto_a_pre_de_b_y_b_co_de_a() -> None:
+    # A es prerrequisito de B y B es correquisito de A: A exige B a la vez o antes,
+    # y B exige A estrictamente antes. No hay orden que lo cumpla.
+    cursos = _cursos_con_requisitos(("EJA1001", [], ["EJA1002"]), ("EJA1002", ["EJA1001"], []))
+    with pytest.raises(ErrorDeCarga) as info:
+        cargar(conectar(":memory:"), _malla(cursos=cursos))
+    assert info.value.errores == [
+        "ciclo de prerrequisitos: EJA1002 → EJA1001 → EJA1002 (pasa por correquisitos)"
+    ]
+
+
+def test_rechaza_ciclo_mixto_largo_con_una_sola_arista_pre() -> None:
+    cursos = _cursos_con_requisitos(
+        ("EJA1001", [], ["EJA1002"]),
+        ("EJA1002", [], ["EJA1003"]),
+        ("EJA1003", ["EJA1001"], []),
+    )
+    with pytest.raises(ErrorDeCarga) as info:
+        cargar(conectar(":memory:"), _malla(cursos=cursos))
+    assert info.value.errores == [
+        "ciclo de prerrequisitos: EJA1003 → EJA1001 → EJA1002 → EJA1003 (pasa por correquisitos)"
+    ]
+
+
+def test_ciclo_solo_de_correquisitos_sigue_permitido() -> None:
+    cursos = _cursos_con_requisitos(
+        ("EJA1001", [], ["EJA1002"]),
+        ("EJA1002", [], ["EJA1001"]),
+        ("EJA1003", ["EJA1001"], []),  # una arista pre que no cierra ningún ciclo
+    )
+    reporte = cargar(conectar(":memory:"), _malla(cursos=cursos))
+    assert (reporte.prerrequisitos, reporte.correquisitos) == (1, 2)
+
+
+def test_ciclo_solo_de_pre_conserva_su_mensaje() -> None:
+    cursos = _cursos_con_requisitos(("EJA1001", ["EJA1002"], []), ("EJA1002", ["EJA1001"], []))
+    with pytest.raises(ErrorDeCarga) as info:
+        cargar(conectar(":memory:"), _malla(cursos=cursos))
+    assert info.value.errores == ["ciclo de prerrequisitos: EJA1001 → EJA1002 → EJA1001"]
+
+
+# ------------------------------------------------------------------ formato del código
+
+
+@pytest.mark.parametrize(
+    ("escrito", "canonico"),
+    [
+        ("PAS 4000", "PAS4000"),  # con espacio, como en la malla y el manual
+        ("ADM-1001", "ADM1001"),  # con guion, como en el manual
+        ("rel2000e", "REL2000E"),  # sufijo E: curso dictado en inglés (manual, pág. 38)
+        ("  esp1001 ", "ESP1001"),
+    ],
+)
+def test_normaliza_espacio_guion_y_mayusculas(escrito: str, canonico: str) -> None:
+    curso = {"codigo": escrito, "nombre": "A", "creditos": 3, "area": "x", "semestre": 1}
+    assert _malla(cursos=[curso]).cursos[0].codigo == canonico
+
+
+@pytest.mark.parametrize(
+    "escrito",
+    [
+        "AB1001",  # dos letras
+        "ABCD1001",  # cuatro letras
+        "ABC1001X",  # sufijo que no es E
+        "ABC10011",  # cinco dígitos
+        "ABC100",  # tres dígitos
+        "ABC--1001",  # dos separadores
+        "ABC - 1001",
+        "ABC_1001",
+        "A BC1001",  # separador fuera de sitio
+        "ABC1001-E",
+    ],
+)
+def test_rechaza_codigos_con_otra_forma(escrito: str) -> None:
+    curso = {"codigo": escrito, "nombre": "A", "creditos": 3, "area": "x", "semestre": 1}
+    with pytest.raises(ValidationError, match="código de curso mal formado"):
+        _malla(cursos=[curso])
+
+
+# ------------------------------------------------------------------ dígitos ASCII y una línea
+
+ANCHO_COMPLETO = "２０９９１０"  # los mismos seis dígitos de 209910, en otro bloque Unicode
+ARABIGOS = "٢٠٩٩١٠"
+
+
+@pytest.mark.parametrize("periodo", [ANCHO_COMPLETO, ARABIGOS, "20991０", "209910\n", " 209910"])
+def test_el_periodo_solo_acepta_digitos_ascii(periodo: str) -> None:
+    assert TypeAdapter(Periodo).validate_python("209910") == "209910"
+    with pytest.raises(ValidationError):
+        TypeAdapter(Periodo).validate_python(periodo)
+
+
+@pytest.mark.parametrize("codigo", ["EJM１００２", "EJM١٠٠٢", "ejm 100２", "EJM-١٠٠٢E"])
+def test_el_codigo_solo_acepta_digitos_ascii(codigo: str) -> None:
+    with pytest.raises(ValidationError, match="mal formado"):
+        TypeAdapter(Codigo).validate_python(codigo)
+
+
+@pytest.mark.parametrize("hora", ["０８:30", "08:٣٠"])
+def test_la_hora_solo_acepta_digitos_ascii(hora: str) -> None:
+    with pytest.raises(ValidationError):
+        TypeAdapter(Hora).validate_python(hora)
+
+
+@pytest.mark.parametrize(
+    "texto",
+    [
+        "sin viernes\nPreferencias verificadas:",
+        "una\rdos",
+        "tab\tulador",
+        "nulo\x00",
+        "escape\x1b[31m",
+        "separador\u2028de línea",
+        "párrafo\u2029nuevo",
+        "al\u202erevés",
+        "ancho\u200bcero",
+    ],
+)
+def test_el_texto_no_admite_saltos_ni_caracteres_de_control(texto: str) -> None:
+    with pytest.raises(ValidationError, match="una sola línea"):
+        TypeAdapter(Texto).validate_python(texto)
+
+
+def test_el_texto_conserva_tildes_y_recorta_los_bordes() -> None:
+    assert TypeAdapter(Texto).validate_python("  Cálculo II — ¿niño?\n") == "Cálculo II — ¿niño?"
