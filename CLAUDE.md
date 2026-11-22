@@ -15,8 +15,8 @@ diseño con su fuente (formato del código de curso, reglas de `verificar_plan`)
   ejemplo y un cliente de guion. Tras una revisión adversarial (8 fallos corregidos), 17
   escenarios congelados v2 y su corrida `agente-guion-v2`. Ninguna llamada a Gemini desde el
   agente.
-- `main` tiene las Fases 0 a 2 (squash local). Rama actual `fase-3-agente`, que sale de
-  `fase-3-herramientas`; ninguna de las dos está en `main`. No hay remoto.
+- `main` tiene las Fases 0 a 3 (dos squash locales: `fase-2-llm` y `fase-3-agente`). Las ramas
+  de cada fase conservan el historial commit a commit. No hay remoto.
 
 ## Principios no negociables
 

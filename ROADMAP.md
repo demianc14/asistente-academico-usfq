@@ -7,8 +7,9 @@ Todo el trabajo está en commits **locales**. El 14-nov `fase-2-llm` (Fases 0, 1
 proveedor del LLM) entró a `main` con un squash local, sin push, por decisión de Demian. **La Fase 2
 entró sin cerrar: el humo de Gemini sigue pendiente** y no hay ninguna cifra medida con LLM. Las
 ramas `fase-0-1-datos-sql`, `fase-2-rag` y `fase-2-llm` conservan el historial commit a commit. No
-hay remoto en GitHub ni PR abiertas. La rama actual es `fase-3-agente`, que sale de
-`fase-3-herramientas`, que sale de ese `main`. Ninguna de las dos ha entrado a `main`.
+hay remoto en GitHub ni PR abiertas. El 22-nov `fase-3-agente` (herramientas y agente de la Fase 3)
+entró a `main` con otro squash local, sin push, por decisión de Demian; `fase-3-herramientas` y
+`fase-3-agente` conservan el historial commit a commit. La rama actual es `main`.
 
 ## Qué quedó hecho
 
@@ -136,7 +137,6 @@ medición limpia y no se reporta como resultado final.
 | Decisión | Bloquea | Notas |
 |---|---|---|
 | Segundo humo y corrida de dev | Cerrar la Fase 2 | Proveedor decidido: Gemini. Humo: 1 llamada; dev: de 30 a 60. |
-| Fusionar `fase-3-herramientas` y `fase-3-agente` a `main` | Seguir con la Fase 4 desde `main` | Las dos ramas son locales. `fase-3-agente` contiene a la otra. |
 | Humo del agente con Gemini | Saber si el prompt del agente funciona con un modelo real | Una solicitud gasta entre 1 y 10 llamadas. Antes hay que cerrar el humo de la Fase 2, que sigue fallando. |
 | ¿Qué preferencias se verifican por código? | Que "sin clases los viernes" deje de salir como no verificada | Hoy ninguna. Días y horas se pueden comprobar con los horarios; "priorizar datos" necesita áreas más finas. |
 | Quién separa las preferencias del texto | La interfaz de la Fase 4 | `Solicitud.preferencias`, `periodo`, `cursos_pedidos` y `creditos_max` los llena la interfaz, no el LLM. Falta decidir cómo: campos del bot o un paso aparte. |
