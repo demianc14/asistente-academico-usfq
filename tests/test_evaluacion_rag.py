@@ -147,8 +147,78 @@ def test_sin_confirmar_solo_anuncia_las_llamadas_del_conjunto(
     monkeypatch.setattr(rag, "cargar_preguntas", lambda: marcadas)
     monkeypatch.setattr(rag, "cliente_desde_env", lambda *_: pytest.fail("no debía llamarse"))
     assert rag.main(["--db", str(db), "--conjunto", "dev"]) == 0
-    assert "1 preguntas pendientes de 1; entre 1 y 2 llamadas" in capsys.readouterr().out
+    salida = capsys.readouterr().out
+    assert "1 preguntas pendientes de 1; entre 1 y 2 llamadas al LLM" in salida
+    # Cada llamada puede reintentarse ante 503 o timeout, y cada intento gasta cuota.
+    assert "hasta 6 peticiones HTTP" in salida
     assert not list(tmp_path.glob("*.jsonl"))
+
+
+def _marcadas_dev() -> list[Pregunta]:
+    return [p.model_copy(update={"conjunto": "dev"}) for p in PREGUNTAS[:1]]
+
+
+def test_el_humo_sin_confirmar_anuncia_las_peticiones_posibles(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from asistente.evaluacion import rag
+
+    db = _base_en_archivo(tmp_path / "base.db")
+    monkeypatch.setattr(rag, "DIR_CORRIDAS", tmp_path)
+    monkeypatch.setattr(rag, "cargar_preguntas", _marcadas_dev)
+    monkeypatch.setattr(rag, "cliente_desde_env", lambda *_: pytest.fail("no debía llamarse"))
+    pid = PREGUNTAS[0].id
+    assert rag.main(["--db", str(db), "--conjunto", "dev", "--humo", pid]) == 0
+    assert "1 llamada al LLM; hasta 3 peticiones HTTP" in capsys.readouterr().out
+
+
+class _ClienteQueReintenta(ClienteDeGuion):
+    """Guion que simula el gasto de un GeminiCliente: la primera llamada costó 3 peticiones."""
+
+    modelo = "guion"
+
+    def __init__(self, respuestas: list[str], falla: bool = False) -> None:
+        super().__init__(respuestas)
+        self.peticiones = 0
+        self._falla = falla
+
+    def completar(self, sistema: str, usuario: str) -> str:
+        self.peticiones += 3 if not self.llamadas else 1
+        if self._falla:
+            from asistente.llm import ErrorDelLLM
+
+            raise ErrorDelLLM("Gemini no respondió tras 3 intentos (error transitorio): 503")
+        return super().completar(sistema, usuario)
+
+
+def test_la_corrida_reporta_las_peticiones_reales(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from asistente.evaluacion import rag
+
+    db = _base_en_archivo(tmp_path / "base.db")
+    monkeypatch.setattr(rag, "DIR_CORRIDAS", tmp_path)
+    monkeypatch.setattr(rag, "cargar_preguntas", _marcadas_dev)
+    monkeypatch.setattr(rag, "cargar_env", lambda _: None)
+    falso = _ClienteQueReintenta([BUENA])
+    monkeypatch.setattr(rag, "cliente_desde_env", lambda *_: falso)
+    assert rag.main(["--db", str(db), "--conjunto", "dev", "--confirmar", "--pausa", "0"]) == 0
+    assert "1 llamadas al LLM y 3 peticiones HTTP en esta ejecución" in capsys.readouterr().out
+
+
+def test_la_corrida_detenida_reporta_las_peticiones_gastadas(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from asistente.evaluacion import rag
+
+    db = _base_en_archivo(tmp_path / "base.db")
+    monkeypatch.setattr(rag, "DIR_CORRIDAS", tmp_path)
+    monkeypatch.setattr(rag, "cargar_preguntas", _marcadas_dev)
+    monkeypatch.setattr(rag, "cargar_env", lambda _: None)
+    falso = _ClienteQueReintenta([], falla=True)
+    monkeypatch.setattr(rag, "cliente_desde_env", lambda *_: falso)
+    assert rag.main(["--db", str(db), "--conjunto", "dev", "--confirmar", "--pausa", "0"]) == 3
+    assert "3 peticiones HTTP en esta ejecución" in capsys.readouterr().err
 
 
 def test_humo_hace_una_sola_llamada_aunque_la_cita_falle() -> None:
@@ -167,3 +237,20 @@ def test_humo_hace_una_sola_llamada_aunque_la_cita_falle() -> None:
     assert registro["formato"] == "ok"
     assert registro["problemas_de_verificacion"]
     assert registro["crudo"] == mala
+
+
+def test_sin_clave_no_se_llama_y_lo_dice(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from asistente.evaluacion import rag
+
+    db = _base_en_archivo(tmp_path / "base.db")
+    monkeypatch.setattr(rag, "DIR_CORRIDAS", tmp_path)
+    monkeypatch.setattr(rag, "cargar_preguntas", _marcadas_dev)
+    monkeypatch.setattr(rag, "cargar_env", lambda _: None)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    pid = PREGUNTAS[0].id
+    for extra in ([], ["--humo", pid]):
+        argv = ["--db", str(db), "--conjunto", "dev", "--confirmar", *extra]
+        assert rag.main(argv) == 3
+        assert "GEMINI_API_KEY" in capsys.readouterr().err

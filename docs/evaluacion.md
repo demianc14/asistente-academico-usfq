@@ -34,7 +34,7 @@ Las preguntas siguen siendo un borrador escrito por el agente y sin revisar (ver
 | Abstención correcta | Preguntas sin respuesta en las que el asistente se abstuvo. Solo existe en dev y no es resultado final. | `abstenciones_correctas` |
 | Respondidas | Preguntas con respuesta que terminaron con una respuesta verificada. | `respondidas` |
 | Citando el fragmento esperado | De esas, cuántas citan el fragmento que contiene la evidencia etiquetada. | `respondidas_citando_el_fragmento_esperado` |
-| Latencia p50/p90 | Búsqueda más llamadas al LLM (incluido el reintento), sin la pausa entre llamadas. | `latencia_p50_ms`, `latencia_p90_ms` |
+| Latencia p50/p90 | Búsqueda más llamadas al LLM (incluido el reintento), sin la pausa entre llamadas. Desde el 22-nov incluye las esperas del cliente ante 503 o timeout (2 y 4 s). | `latencia_p50_ms`, `latencia_p90_ms` |
 
 Cada corrida queda en `evals/corridas/<nombre>-<conjunto>-k5.jsonl`, un caso por línea, más un
 `.resumen.json`. Si se corta (por ejemplo, por un 429) se retoma con el mismo comando.

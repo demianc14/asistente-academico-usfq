@@ -10,7 +10,8 @@ diseño con su fuente (formato del código de curso, reglas de `verificar_plan`)
 ## Dónde estamos (15-nov-2026)
 
 - Fases 0 y 1 hechas con datos de ejemplo. Fase 2 construida con Gemini detrás de `ClienteLLM`,
-  pero sin cerrar: el humo sigue pendiente y no hay cifras con LLM.
+  pero sin cerrar: el humo pasó (22-nov, `fase-2-humo`) y falta la corrida de dev; no hay cifras
+  de evaluación con LLM. `ClienteLLM` reintenta 503 y timeout, y cada reintento gasta cuota.
 - Fase 3: hechas las herramientas deterministas y el agente (bucle de tool use), con datos de
   ejemplo y un cliente de guion. Tras una revisión adversarial (8 fallos corregidos), 17
   escenarios congelados v2 y su corrida `agente-guion-v2`. Ninguna llamada a Gemini desde el

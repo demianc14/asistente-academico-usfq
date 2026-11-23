@@ -25,7 +25,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, TypeAdapter, model_validator
 
 from asistente.db import RAIZ, RUTA_DB, conectar
-from asistente.llm import ClienteLLM, ErrorDelLLM, cargar_env, cliente_desde_env
+from asistente.llm import INTENTOS, ClienteLLM, ErrorDelLLM, cargar_env, cliente_desde_env
 from asistente.rag.busqueda import buscar
 from asistente.rag.responder import (
     MAX_INTENTOS,
@@ -231,7 +231,10 @@ def resumir_respuestas(registros: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def humo(con: sqlite3.Connection, llm: ClienteLLM, pregunta: Pregunta, k: int) -> dict[str, Any]:
-    """Exactamente una llamada al LLM, sin reintento: ¿el formato de ida y vuelta funciona?"""
+    """Una llamada al LLM, sin reintento por verificación: ¿el formato de ida y vuelta funciona?
+
+    El cliente sí puede repetir la petición ante 503 o timeout; `main` reporta cuántas hizo.
+    """
     recuperados = buscar(con, pregunta.pregunta, k)
     inicio = time.perf_counter()
     crudo = llm.completar(SISTEMA, _mensaje(pregunta.pregunta, recuperados))
@@ -308,15 +311,24 @@ def main(argv: list[str] | None = None) -> int:
             if pregunta is None:
                 print(f"{args.humo} no es una pregunta de {args.conjunto}.", file=sys.stderr)
                 return 2
-            print(f"Humo sobre {pregunta.id}: 1 llamada al LLM.")
+            print(
+                f"Humo sobre {pregunta.id}: 1 llamada al LLM; hasta {INTENTOS} peticiones HTTP "
+                "si hay 503 o timeout (cada reintento gasta cuota)."
+            )
             if not args.confirmar:
                 print("No se llamó a nada. Repite con --confirmar para hacerla.")
                 return 0
             cargar_env(RAIZ / ".env")
             try:
-                registro = humo(con, cliente_desde_env(ESQUEMA_BORRADOR), pregunta, args.k)
+                cliente_humo = cliente_desde_env(ESQUEMA_BORRADOR)
+            except ErrorDelLLM as exc:
+                print(f"No se llamó a nada: {exc}", file=sys.stderr)
+                return 3
+            try:
+                registro = humo(con, cliente_humo, pregunta, args.k)
             except ErrorDelLLM as exc:
                 registro = {"id": pregunta.id, "error": str(exc)}
+            print(f"Peticiones HTTP en esta ejecución: {cliente_humo.peticiones}.")
             ruta = DIR_CORRIDAS / f"humo-{pregunta.id}.json"
             ruta.parent.mkdir(parents=True, exist_ok=True)
             ruta.write_text(json.dumps(registro, ensure_ascii=False, indent=2) + "\n", "utf-8")
@@ -326,7 +338,9 @@ def main(argv: list[str] | None = None) -> int:
         pendientes = len({p.id for p in elegidas} - corrida.hechos())
         print(
             f"Corrida {corrida.ruta.name}: {pendientes} preguntas pendientes de "
-            f"{len(elegidas)}; entre {pendientes} y {pendientes * MAX_INTENTOS} llamadas al LLM."
+            f"{len(elegidas)}; entre {pendientes} y {pendientes * MAX_INTENTOS} llamadas al LLM; "
+            f"hasta {pendientes * MAX_INTENTOS * INTENTOS} peticiones HTTP si hay 503 o timeout "
+            "(cada reintento gasta cuota)."
         )
         if not args.confirmar:
             print("No se llamó a nada. Repite con --confirmar para correrla.")
@@ -335,15 +349,24 @@ def main(argv: list[str] | None = None) -> int:
         cargar_env(RAIZ / ".env")
         try:
             llm = cliente_desde_env(ESQUEMA_BORRADOR)
+        except ErrorDelLLM as exc:
+            print(f"No se llamó a nada: {exc}", file=sys.stderr)
+            return 3
+        antes = sum(r["llamadas_llm"] for r in corrida.registros())
+        try:
             registros = evaluar_respuestas(con, llm, elegidas, corrida, args.k, args.pausa)
         except ErrorDelLLM as exc:
             hechas = sum(r["llamadas_llm"] for r in corrida.registros())
             print(
                 f"Corrida detenida: {exc}\nQuedaron guardados {len(corrida.hechos())} casos "
-                f"({hechas} llamadas). Se retoma con el mismo comando.",
+                f"({hechas} llamadas). {llm.peticiones} peticiones HTTP en esta ejecución. "
+                "Se retoma con el mismo comando.",
                 file=sys.stderr,
             )
             return 3
+        llamadas = sum(r["llamadas_llm"] for r in registros) - antes
+        # Las peticiones son de esta ejecución; una corrida retomada no las suma a las anteriores.
+        print(f"{llamadas} llamadas al LLM y {llm.peticiones} peticiones HTTP en esta ejecución.")
         resumen = {
             "conjunto": args.conjunto,
             "modelo": llm.modelo,

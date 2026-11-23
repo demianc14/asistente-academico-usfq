@@ -5,7 +5,8 @@ Estado al **14-nov-2026**. El plan completo y sus principios están en el brief 
 
 Todo el trabajo está en commits **locales**. El 14-nov `fase-2-llm` (Fases 0, 1 y 2, con el
 proveedor del LLM) entró a `main` con un squash local, sin push, por decisión de Demian. **La Fase 2
-entró sin cerrar: el humo de Gemini sigue pendiente** y no hay ninguna cifra medida con LLM. Las
+entró sin cerrar: el humo de Gemini pasó después, el 22-nov, en `fase-2-humo`** y no hay
+ninguna cifra de evaluación medida con LLM. Las
 ramas `fase-0-1-datos-sql`, `fase-2-rag` y `fase-2-llm` conservan el historial commit a commit. No
 hay remoto en GitHub ni PR abiertas. El 22-nov `fase-3-agente` (herramientas y agente de la Fase 3)
 entró a `main` con otro squash local, sin push, por decisión de Demian; `fase-3-herramientas` y
@@ -45,13 +46,22 @@ aprobado a un cupo (optativas, electivas), así que los cupos no entran en la vi
 - Evaluación (`python -m asistente.evaluacion.rag`): 40 preguntas en `evals/preguntas.yaml` y
   corridas reanudables en `evals/corridas/`.
 - Protocolo `ClienteLLM` con un cliente de guion para tests y **Gemini** (`gemini-3.5-flash-lite`)
-  como proveedor real: una llamada es una petición HTTP, sin reintentos del SDK.
+  como proveedor real. Desde el 22-nov `completar` reintenta solo ante 5xx o timeout (hasta 3
+  peticiones, esperas de 2 y 4 s) y cuenta cada petición en `GeminiCliente.peticiones`; el 429, los
+  demás 4xx, `incomplete` y el JSON inválido no se reintentan. Tope de salida, nivel de
+  razonamiento, intentos y timeout son parámetros del constructor.
 - Partición dev (30) y test (10) de las preguntas, decidida por Demian; límites y bitácora de
   ajustes en `docs/evaluacion.md`. La evaluación con LLM exige `--conjunto` y `--confirmar`.
 - **Humo fallido (14-nov):** la única llamada hecha a Gemini, sobre `man-01`, terminó
   `status=incomplete`. Se añadió diagnóstico y se fijó `thinking_level=minimal` con un tope de 2048
-  tokens. El segundo humo (14-nov) devolvió 503 por saturación del modelo, así que el arreglo
-  sigue sin confirmar. Van 2 llamadas en total; la corrida de dev no se ha hecho.
+  tokens. El segundo humo (14-nov) devolvió 503 por saturación del modelo.
+- **Humo pasado (22-nov), rama `fase-2-humo`:** dos peticiones sobre `man-01`, con scripts fuera
+  del repo y las respuestas crudas guardadas fuera del repo (no en `evals/corridas/`). La primera,
+  con la config de `main`, terminó `completed` con 0 tokens de razonamiento y 72 de salida (OJO:
+  cifra de una corrida no versionada). La segunda, ya con los reintentos, también `completed`,
+  formato válido y la cita verificó (1 petición). Conclusión: con `minimal` el razonamiento no se
+  come el tope; lo del 14-nov fue probablemente el nivel por defecto, sin respuesta cruda que lo
+  confirme. Van 4 llamadas en total; la corrida de dev no se ha hecho.
 
 Medido (corrida `evals/corridas/recuperacion-k5.resumen.json`): la evidencia sale en el top-5 en
 28 de 30 preguntas y en el primer puesto en 23. Dos reservas: las preguntas las redactó el agente y
@@ -102,8 +112,8 @@ Nada se probó con la malla real.
 
 En este orden; lo marcado con (D) espera una decisión de Demian.
 
-1. **Cerrar la Fase 2.** Segundo humo (1 llamada, espera OK de Demian); si pasa, dev (30 a 60
-   llamadas); ajustar el prompt solo con dev, anotando cada ajuste; al final, test una sola vez (10
+1. **Cerrar la Fase 2.** Humo pasado (22-nov). Sigue dev (D: de 30 a 60 llamadas, hasta 3 veces
+   más si hay 503, porque cada reintento es una petición); ajustar el prompt solo con dev, anotando cada ajuste; al final, test una sola vez (10
    a 20 llamadas) y poner en el README las cifras de test, no las de dev.
 2. **Revisar las 40 preguntas** (D), en especial las 10 "sin respuesta": se eligieron por no estar
    en los documentos, pero no se comprobó leyendo el manual entero.
@@ -136,8 +146,8 @@ medición limpia y no se reporta como resultado final.
 
 | Decisión | Bloquea | Notas |
 |---|---|---|
-| Segundo humo y corrida de dev | Cerrar la Fase 2 | Proveedor decidido: Gemini. Humo: 1 llamada; dev: de 30 a 60. |
-| Humo del agente con Gemini | Saber si el prompt del agente funciona con un modelo real | Una solicitud gasta entre 1 y 10 llamadas. Antes hay que cerrar el humo de la Fase 2, que sigue fallando. |
+| Corrida de dev | Cerrar la Fase 2 | Humo pasado el 22-nov. Dev: de 30 a 60 llamadas; con reintentos ante 503, hasta el triple de peticiones. El aviso de `evaluacion/rag.py` anuncia el máximo de peticiones y al terminar dice cuántas hizo. |
+| Humo del agente con Gemini | Saber si el prompt del agente funciona con un modelo real | Una solicitud gasta entre 1 y 10 llamadas. El humo de la Fase 2 ya pasó (22-nov). |
 | ¿Qué preferencias se verifican por código? | Que "sin clases los viernes" deje de salir como no verificada | Hoy ninguna. Días y horas se pueden comprobar con los horarios; "priorizar datos" necesita áreas más finas. |
 | Quién separa las preferencias del texto | La interfaz de la Fase 4 | `Solicitud.preferencias`, `periodo`, `cursos_pedidos` y `creditos_max` los llena la interfaz, no el LLM. Falta decidir cómo: campos del bot o un paso aparte. |
 | Límite de créditos por semestre | Usar `verificar_plan` con datos reales | **Sin verificar.** `creditos_max` no tiene valor por defecto; hay que confirmar el límite real de la USFQ (y si cambia en verano) en el manual vigente o en Registro. |
