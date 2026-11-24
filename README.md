@@ -1,5 +1,7 @@
 # Asistente académico USFQ
 
+[![CI](https://github.com/demianc14/asistente-academico-usfq/actions/workflows/ci.yml/badge.svg)](https://github.com/demianc14/asistente-academico-usfq/actions/workflows/ci.yml)
+
 > **En construcción.** Hay capa de datos (Fase 1), RAG con citas verificadas (Fase 2) y
 > planificador con su agente (Fase 3), todo probado con un LLM de mentira y datos de ejemplo.
 > Gemini está conectado pero no hay ninguna cifra medida con él. Faltan la malla real, el
@@ -38,6 +40,13 @@ python3 -m venv .venv
 .venv/bin/python -m asistente.evaluacion.rag --solo-recuperacion
 .venv/bin/python -m asistente.evaluacion.agente --nombre prueba   # 17 escenarios, sin LLM real
 .venv/bin/pytest
+```
+
+Con Docker, en una máquina limpia (sin `.env`, base ni PDF): ETL, descarga de los PDF públicos e
+ingesta. La base y los PDF quedan en volúmenes de Docker.
+
+```bash
+docker compose run --rm pipeline
 ```
 
 ## Resultados

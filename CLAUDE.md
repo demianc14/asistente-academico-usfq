@@ -17,7 +17,8 @@ diseño con su fuente (formato del código de curso, reglas de `verificar_plan`)
   escenarios congelados v2 y su corrida `agente-guion-v2`. Ninguna llamada a Gemini desde el
   agente.
 - `main` tiene las Fases 0 a 3 (dos squash locales: `fase-2-llm` y `fase-3-agente`). Las ramas
-  de cada fase conservan el historial commit a commit. No hay remoto.
+  de cada fase conservan el historial commit a commit. Remoto privado en `demianc14/asistente-academico-usfq` (24-nov):
+  solo `main` y `infra-ci-docker`; CI en `.github/workflows/ci.yml`, Docker en `compose.yaml`.
 
 ## Principios no negociables
 
