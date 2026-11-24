@@ -1,0 +1,13 @@
+# Nada privado ni generado entra al contexto de build de Docker.
+.env
+.env.*
+datos/local
+datos/publico
+*.db
+*.db-*
+.git
+.venv
+**/__pycache__
+.pytest_cache
+.mypy_cache
+.ruff_cache

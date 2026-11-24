@@ -1,0 +1,35 @@
+# Chequeos de cada push y PR: formato, lint, tipos y tests.
+# Sin claves ni secretos: los tests usan un ClienteLLM de guion y nunca llaman a Gemini.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  chequeos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Historial completo: test_privacidad revisa todos los commits, no solo el último.
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Instalar
+        run: pip install -e ".[dev]"
+      - name: Formato
+        run: ruff format --check .
+      - name: Lint
+        run: ruff check .
+      - name: Tipos
+        run: mypy
+      - name: Tests
+        run: pytest

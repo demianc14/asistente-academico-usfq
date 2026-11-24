@@ -8,7 +8,8 @@ proveedor del LLM) entró a `main` con un squash local, sin push, por decisión 
 entró sin cerrar: el humo de Gemini pasó después, el 22-nov, en `fase-2-humo`** y no hay
 ninguna cifra de evaluación medida con LLM. Las
 ramas `fase-0-1-datos-sql`, `fase-2-rag` y `fase-2-llm` conservan el historial commit a commit. No
-hay remoto en GitHub ni PR abiertas. El 22-nov `fase-3-agente` (herramientas y agente de la Fase 3)
+había remoto hasta el 24-nov: ese día `main` se subió a `demianc14/asistente-academico-usfq`
+(privado) con CI (ruff, mypy, pytest, sin claves) y Docker para ETL e ingesta, rama `infra-ci-docker`. El 22-nov `fase-3-agente` (herramientas y agente de la Fase 3)
 entró a `main` con otro squash local, sin push, por decisión de Demian; `fase-3-herramientas` y
 `fase-3-agente` conservan el historial commit a commit. La rama actual es `main`.
 

@@ -1,0 +1,20 @@
+# ETL e ingesta desde cero: `docker compose run --rm pipeline`.
+# Sin .env: ningún paso llama al LLM. La base y los PDF quedan en volúmenes, no en el repo.
+# Única salida a la red: scripts/descargar_fuentes.py, solo hacia www.usfq.edu.ec.
+services:
+  pipeline:
+    build: .
+    command:
+      - sh
+      - -ec
+      - |
+        python -m asistente.etl
+        python scripts/descargar_fuentes.py
+        python -m asistente.rag.ingesta
+    volumes:
+      - base:/app/datos/local
+      - pdf:/app/datos/publico
+
+volumes:
+  base:
+  pdf:
